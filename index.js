@@ -24,6 +24,14 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+    const foodCollection = client.db("foodDB").collection("foodCollection");
+    app.post("/foodItem", async (req, res) => {
+      const foodItem = req.body;
+      console.log(foodItem);
+      const result = await foodCollection.insertOne(foodItem);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
@@ -31,7 +39,7 @@ async function run() {
     );
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
