@@ -1,14 +1,21 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
 app.use(express.json());
-
+app.use(cookieParser());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.crkhnnq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -27,10 +34,38 @@ async function run() {
     const foodCollection = client.db("foodDB").collection("foodCollection");
     // get all food Item
     app.get("/foodItem", async (req, res) => {
+      console.log("cook", req.cookies);
       const cursor = foodCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     });
+
+    // Auth related API
+
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      console.log("user for token", user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res
+        .cookie("token", token, {
+          httpOnly: false,
+
+          secure: true,
+          sameSite: "none",
+        })
+        .send({ success: true });
+    });
+
+    app.post("/logOut", (req, res) => {
+      const user = req.body;
+      console.log("logging out", user);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
+
+    // service related API
+
     // get single good item
     app.get("/foodItem/:id", async (req, res) => {
       const id = req.params.id;
@@ -45,9 +80,10 @@ async function run() {
       let query = {};
       if (req.query?.email) {
         query = { email: req.query.email };
-      } else if (req.query?.name) {
-        query = { name: req.query.name };
       }
+      // else if (req.query?.name) {
+      //   query = { name: req.query.name };
+      // }
       const result = await foodCollection.find(query).toArray();
       res.send(result);
     });
@@ -56,6 +92,7 @@ async function run() {
 
     app.get("/foodItem/:id", async (req, res) => {
       const id = req.params.id;
+
       const query = { _id: new ObjectId(id) };
       const result = await foodCollection.findOne(query);
       res.send(result);
