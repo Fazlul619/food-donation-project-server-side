@@ -10,7 +10,13 @@ const port = process.env.PORT || 5000;
 // middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+
+      "https://assignment-11-9eba5.web.app",
+      "https://assignment-11-9eba5.firebaseapp.com",
+      "https://earnest-strudel-49b0ac.netlify.app",
+    ],
     credentials: true,
   })
 );
@@ -35,7 +41,7 @@ const logger = (req, res, next) => {
 
 const verifyToken = (req, res, next) => {
   const token = req?.cookies?.token;
-  // console.log("token in the middle ware", token);
+
   if (!token) {
     return res.status(401).send({ message: "Unauthorized access" });
   }
@@ -48,14 +54,19 @@ const verifyToken = (req, res, next) => {
   });
 };
 
+const cookeOption = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+};
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const foodCollection = client.db("foodDB").collection("foodCollection");
     // get all food Item
     app.get("/foodItem", async (req, res) => {
-      // console.log("cookies", req.cookies);
       const cursor = foodCollection.find();
       const result = await cursor.toArray();
       res.send(result);
@@ -63,8 +74,6 @@ async function run() {
 
     // manage my food
     app.get("/foodItem/manageMyFood", logger, verifyToken, async (req, res) => {
-      console.log("token owner", req.user);
-
       const cursor = foodCollection.find();
       const result = await cursor.toArray();
       res.send(result);
@@ -74,26 +83,22 @@ async function run() {
 
     app.post("/jwt", logger, async (req, res) => {
       const user = req.body;
-      console.log("user for token", user);
+
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: "1h",
       });
-      console.log(token);
-      res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-        })
-        .send({
-          status: true,
-        });
+
+      res.cookie("token", token, cookeOption).send({
+        status: true,
+      });
     });
 
     app.post("/logout", (req, res) => {
       const user = req.body;
-      console.log("logging out", user);
-      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+
+      res
+        .clearCookie("token", { ...cookeOption, maxAge: 0 })
+        .send({ success: true });
     });
 
     // service related API
@@ -105,23 +110,6 @@ async function run() {
       const result = await foodCollection.findOne(query);
       res.send(result);
     });
-
-    // get specific user food item
-    // app.get("/foodItem", async (req, res) => {
-    //   console.log(req.email);
-    //   let query = {};
-    //   if (req.query?.email) {
-    //     query = { email: req.query.email };
-    //   }
-    //   // else if (req.query?.name) {
-    //   //   query = { name: req.query.name };
-    //   // }
-    //   const result = await foodCollection.find(query).toArray();
-    //   res.send(result);
-    // });
-
-    // update food
-
     app.get("/foodItem/:id", async (req, res) => {
       const id = req.params.id;
 
@@ -187,7 +175,7 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
