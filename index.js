@@ -12,7 +12,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-
+      "http://localhost:5174",
       "https://assignment-11-9eba5.web.app",
       "https://assignment-11-9eba5.firebaseapp.com",
       "https://earnest-strudel-49b0ac.netlify.app",
